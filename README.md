@@ -1,36 +1,49 @@
-# ESP32 Home Sentinel
+# Smart Agritech Greenhouse Monitor
 
-A touch-only motion dashboard built with an ESP32-2432S028 CYD and an HC-SR501 PIR sensor.
+A touch-controlled greenhouse dashboard for the ESP32-2432S028 CYD. It reads temperature and humidity from a DHT11 sensor and displays live gauges, historical trends, and a high-temperature warning.
+
+## Demo
+
+### Live sensor readings
+
+![Greenhouse dashboard with live DHT11 readings](images/image.png)
+
+### Sensor paused
+
+![Greenhouse dashboard with the sensor paused](images/image%20copy.png)
 
 ## Features
 
-- `SAFE`: green screen, alarm is disarmed.
-- `ARMED`: amber screen, the PIR sensor is monitored.
-- `ALERT`: red screen when motion is detected.
-- The on-screen button changes between `ARM`, `DISARM`, and `RESET`.
-- No external LEDs, buttons, or buzzer are used.
+- ST7789 2.8-inch CYD display with LVGL.
+- XPT2046 touch controls.
+- DHT11 temperature and humidity readings.
+- FreeRTOS dual-core architecture:
+  - DHT11 task pinned to Core 0.
+  - LVGL task pinned to Core 1.
+- Zero-wait mutex handoff between sensor and UI tasks.
+- Temperature and humidity circular gauges.
+- Live line chart with a new point every two seconds.
+- Touch switch to pause or resume DHT11 readings.
+- Critical red warning when temperature exceeds 35 C.
 
 ## Hardware
 
-- ESP32-2432S028 (Cheap Yellow Display, CYD)
-- HC-SR501 PIR Motion Sensor
-- Breadboard and jumper wires for the PIR connection
+- ESP32-2432S028 CYD with TPM408-2.8 display
+- HC-SR501 PIR was used during early tests; the current application uses a DHT11
+- DHT11 sensor module
+- Breadboard and jumper wires
 
-## Wiring
+## DHT11 wiring
 
-Use the ESP32 3.3V pin for the PIR sensor. Connect every GND to the ESP32 GND.
+| DHT11 pin | ESP32-CYD |
+| --- | --- |
+| VCC | 3.3V |
+| GND | GND |
+| DATA | GPIO22 |
 
-| Component | Pin | ESP32 GPIO |
-| --- | --- | ---: |
-| HC-SR501 | VCC | 5V or VIN |
-| HC-SR501 | GND | GND |
-| HC-SR501 | OUT | GPIO 22 |
+Use a 4.7k-10k pull-up resistor between DATA and 3.3V if your DHT11 module does not already include one.
 
-Do not connect an ESP32 GPIO directly to 5V. The HC-SR501 OUT pin is normally compatible with ESP32 logic, but power the sensor and check your module before final assembly.
-
-## CYD display mapping
-
-This project targets the common ESP32-2432S028 / TPM408-2.8 layout:
+## CYD display and touch pins
 
 | Function | GPIO |
 | --- | ---: |
@@ -38,21 +51,33 @@ This project targets the common ESP32-2432S028 / TPM408-2.8 layout:
 | TFT DC / CS | 2 / 15 |
 | TFT backlight | 21 |
 | XPT2046 touch SCLK / MOSI / MISO | 25 / 32 / 39 |
-| XPT2046 touch CS / IRQ | 33 / 36 |
+| XPT2046 touch CS | 33 |
 
-GPIO 22 is reserved for the PIR input. The firmware does not use external buttons, LEDs, or a buzzer.
+The display uses the ST7789 driver at 20 MHz. The XPT2046 touch controller uses the CYD software-SPI configuration required by this board revision.
 
-## Run it
+## Build and upload
 
-1. Open this folder in VS Code with the PlatformIO extension.
-2. Connect the ESP32 by USB.
-3. Select **Upload**.
-4. Let the PIR warm up for about 30-60 seconds.
-5. Tap ARM, wait a few seconds, then move in front of the sensor.
+1. Open the project in VS Code with PlatformIO.
+2. Connect the CYD board by USB-C.
+3. Run **Build**.
+4. Run **Upload**.
+5. Allow the DHT11 to settle, then use the touch switch to pause or resume readings.
 
-## Suggested GitHub roadmap
+## Project structure
 
-1. Add a startup countdown so the PIR can warm up before arming.
-2. Add a settings mode for PIR sensitivity.
-3. Add a small event counter and a wiring photo.
-4. Add a short demo video or GIF to the GitHub README.
+```text
+src/main.cpp       Firmware, display driver, LVGL UI, and FreeRTOS tasks
+include/lv_conf.h  LVGL widget configuration
+platformio.ini     PlatformIO environment and dependencies
+images/            Hardware and dashboard screenshots
+```
+
+## Known limitations
+
+- DHT11 readings are relatively slow and should not be sampled faster than about two seconds.
+- The chart uses one shared 0-100 scale for temperature and humidity.
+- The current version has no Wi-Fi or cloud logging.
+
+## License
+
+This project is available under the MIT License.
